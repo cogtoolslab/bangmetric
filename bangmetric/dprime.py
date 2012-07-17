@@ -15,6 +15,7 @@ DEFAULT_FUDGE_FACTOR = 0.5
 DEFAULT_FUDGE_MODE = 'correction'
 ATOL = 1e-7
 
+
 def dprime(y_pred, y_true):
     """Computes the d-prime sensitivity index of the predictions.
 
@@ -52,6 +53,10 @@ def dprime(y_pred, y_true):
     # -- actual computation
     pos = y_true > 0
     neg = ~pos
+
+    assert pos.sum() > 1, 'Not enough positives to estimate the variance'
+    assert neg.sum() > 1, 'Not enough negatives to estimate the variance'
+
     pos_mean = y_pred[pos].mean()
     neg_mean = y_pred[neg].mean()
     pos_var = y_pred[pos].var(ddof=1)
@@ -67,7 +72,7 @@ def dprime(y_pred, y_true):
     return dp
 
 
-def dprime_ova_from_confusion(M, fudge_mode=DEFAULT_FUDGE_MODE, \
+def dprime_from_confusion_ova(M, fudge_mode=DEFAULT_FUDGE_MODE, \
         fudge_fac=DEFAULT_FUDGE_FACTOR, atol=ATOL):
     """Computes the one-vs-all d-prime sensitivity index of the confusion matrix.
 
