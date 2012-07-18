@@ -158,8 +158,6 @@ def dprime_from_confusion_ova(M, fudge_mode=DEFAULT_FUDGE_MODE, \
     ----------
     http://en.wikipedia.org/wiki/D'
     http://en.wikipedia.org/wiki/Confusion_matrix
-
-    XXX: no normalization for unbalanced data
     """
 
     M = np.array(M)
