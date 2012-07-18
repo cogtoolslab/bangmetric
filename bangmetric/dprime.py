@@ -13,7 +13,6 @@ from scipy.stats import norm
 
 DEFAULT_FUDGE_FACTOR = 0.5
 DEFAULT_FUDGE_MODE = 'correction'
-ATOL = 1e-6
 
 
 def dprime(y_pred, y_true, **kwargs):
@@ -132,7 +131,7 @@ def dprime_from_samp(pos, neg, maxv=None, minv=None, safedp=True, bypass_nchk=Fa
 
 
 def dprime_from_confusion_ova(M, fudge_mode=DEFAULT_FUDGE_MODE, \
-        fudge_fac=DEFAULT_FUDGE_FACTOR, atol=ATOL):
+        fudge_fac=DEFAULT_FUDGE_FACTOR):
     """Computes the one-vs-all d-prime sensitivity index of the confusion matrix.
 
     Parameters
@@ -149,9 +148,6 @@ def dprime_from_confusion_ova(M, fudge_mode=DEFAULT_FUDGE_MODE, \
         Determins how to apply the fudge factor
             'always': always apply the fudge factor 
             'correction': apply only when needed
-
-    atol: float, optional
-        Tolerance to simplify the dp from a  2-way (i.e., 2x2) confusion matrix.
 
     Returns
     -------
@@ -197,7 +193,7 @@ def dprime_from_confusion_ova(M, fudge_mode=DEFAULT_FUDGE_MODE, \
 
     dp = norm.ppf(TPR) - norm.ppf(FPR)
     # if there's only two dp's then, it's must be "A" vs. "~A" task.  If so, just give one value
-    if len(dp) == 2 and np.abs(dp[0] - dp[1]) < atol:
+    if len(dp) == 2:
         dp = np.array([dp[0]])
 
     return dp
