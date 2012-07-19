@@ -127,11 +127,12 @@ def dprime_from_confusion_ova(M, fudge_mode=DEFAULT_FUDGE_MODE, \
 
     fudge_factor: float, optional
         A small factor to avoid non-finite numbers when TPR or FPR becomes 0 or 1.
+        Default is 0.5.
 
     fudge_mode: str, optional
         Determins how to apply the fudge factor.  Can be one of:
-            'always': always apply the fudge factor 
-            'correction': apply only when needed
+            'correction': apply only when needed (default)
+            'always': always apply the fudge factor
             'none': no fudging --- equivalent to ``fudge_factor=0``
 
     max_value: float, optional
@@ -144,7 +145,7 @@ def dprime_from_confusion_ova(M, fudge_mode=DEFAULT_FUDGE_MODE, \
     Returns
     -------
     dp: array, shape = [n_classes]
-        Array of d-primes, each element corresponding to each class
+        Array of d-primes, where each element corresponds to each class
 
     References
     ----------
