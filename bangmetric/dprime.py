@@ -167,10 +167,9 @@ def dprime_from_confusion_ova(M, fudge_mode=DEFAULT_FUDGE_MODE, \
 
     # -- application of fudge factor
     if fudge_mode == 'none':           # no fudging
-        fudge_mode = 'always'
-        fudge_factor = 0
+        pass
 
-    if fudge_mode == 'always':         # always apply fudge factor
+    elif fudge_mode == 'always':       # always apply fudge factor
         TP += fudge_factor
         FP += fudge_factor
         P += 2.*fudge_factor
