@@ -6,7 +6,7 @@
 #
 # License: BSD
 
-__all__ = ['dprime', 'dprime_from_samp', 'dprime_from_confusion_ova']
+__all__ = ['dprime', 'dprime_from_samp', 'dprime_from_confusion']
 
 import numpy as np
 from scipy.stats import norm
@@ -112,7 +112,7 @@ def dprime_from_samp(pos, neg, max_value=np.inf, min_value=-np.inf):
     return dp
 
 
-def dprime_from_confusion_ova(M, fudge_mode=DEFAULT_FUDGE_MODE, \
+def dprime_from_confusion(M, collation=None, fudge_mode=DEFAULT_FUDGE_MODE, \
         fudge_factor=DEFAULT_FUDGE_FACTOR, max_value=np.inf, min_value=-np.inf):
     """Computes the one-vs-all d-prime sensitivity index of the confusion matrix.
     This function is mostly for when there is no access to internal representation 
@@ -120,10 +120,22 @@ def dprime_from_confusion_ova(M, fudge_mode=DEFAULT_FUDGE_MODE, \
 
     Parameters
     ----------
-    M: array, shape = [n_classes (true), n_classes (pred)] 
+    M: array-like, shape = [n_classes (true), n_classes (pred)] 
         Confusion matrix, where the element M_{rc} means the number of
         times when the classifier guesses that a test sample in the r-th class
         belongs to the c-th class.
+
+    collation: None (default) or array-like with shape = [n_grouping, n_classes]
+        Defines how to group entries in `M` to compute TPR and FPR.  
+        Entries shoule be {+1, 0, -1}.  A row defines one instance of grouping,
+        where +1, -1, and 0 designate the corresponding class as a
+        positive, negative, and ignored class, respectively.  For example, 
+        the following `collation` defines a 3-way one vs. rest grouping 
+        (given that `M` is a 3x3 matrix):
+            [[+1, -1, -1],
+             [-1, +1, -1],
+             [-1, -1, +1]]
+        If `None` (default), one vs. rest grouping is assumed.
 
     fudge_factor: float, optional
         A small factor to avoid non-finite numbers when TPR or FPR becomes 0 or 1.
@@ -144,8 +156,9 @@ def dprime_from_confusion_ova(M, fudge_mode=DEFAULT_FUDGE_MODE, \
 
     Returns
     -------
-    dp: array, shape = [n_classes]
-        Array of d-primes, where each element corresponds to each class
+    dp: array, shape = [n_grouping]
+        Array of d-primes, where each element corresponds to each grouping
+        defined by `collation`.
 
     References
     ----------
@@ -153,17 +166,31 @@ def dprime_from_confusion_ova(M, fudge_mode=DEFAULT_FUDGE_MODE, \
     http://en.wikipedia.org/wiki/Confusion_matrix
     """
 
+    # M: confusion matrix, row means true classes, col means predicted classes
     M = np.array(M)
     assert M.ndim == 2
     assert M.shape[0] == M.shape[1]
-    
-    P = np.sum(M, axis=1)   # number of positives, for each class
-    N = np.sum(P) - P
+    n_classes = M.shape[0]
 
-    TP = np.diag(M)
-    FP = np.sum(M, axis=0) - TP
-    TP = TP.astype('float64')
-    FP = FP.astype('float64')
+    if collation is None:    
+        # make it one vs. rest
+        collation = -np.ones((n_classes, n_classes), dtype='int8')
+        collation += 2 * np.eye(n_classes, dtype='int8')
+    else:
+        collation = np.array(collation, dtype='int8')
+        assert collation.ndim == 2
+        assert collation.shape[1] == n_classes
+    
+    # P0: number of positives, for each class
+    # P: number of positives, for each grouping
+    # N: number of negatives, for each grouping
+    # TP: number of true positives, for each grouping
+    # FP: number of false positives, for each grouping
+    P0 = np.sum(M, axis=1)   
+    P = np.array([np.sum(P0[coll == +1]) for coll in collation], dtype='float64')
+    N = np.array([np.sum(P0[coll == -1]) for coll in collation], dtype='float64')
+    TP = np.array([np.sum(M[coll == +1][:, coll == +1]) for coll in collation], dtype='float64')
+    FP = np.array([np.sum(M[coll == -1][:, coll == +1]) for coll in collation], dtype='float64')
 
     # -- application of fudge factor
     if fudge_mode == 'none':           # no fudging
@@ -188,10 +215,6 @@ def dprime_from_confusion_ova(M, fudge_mode=DEFAULT_FUDGE_MODE, \
     TPR = TP / P
     FPR = FP / N
     dp = np.clip(norm.ppf(TPR) - norm.ppf(FPR), min_value, max_value)
-
-    # if there's only two dp's then, it's must be "A" vs. "~A" task.  If so, just give one value
-    if len(dp) == 2:
-        dp = np.array([dp[0]])
 
     return dp
 
