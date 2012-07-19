@@ -10,9 +10,7 @@ __all__ = ['dprime', 'dprime_from_samp', 'dprime_from_confusion']
 
 import numpy as np
 from scipy.stats import norm
-
-DEFAULT_FUDGE_FACTOR = 0.5
-DEFAULT_FUDGE_MODE = 'correction'
+from .utils import confusion_stats
 
 
 def dprime(y_pred, y_true, **kwargs):
@@ -112,11 +110,12 @@ def dprime_from_samp(pos, neg, max_value=np.inf, min_value=-np.inf):
     return dp
 
 
-def dprime_from_confusion(M, collation=None, fudge_mode=DEFAULT_FUDGE_MODE, \
-        fudge_factor=DEFAULT_FUDGE_FACTOR, max_value=np.inf, min_value=-np.inf):
-    """Computes the d-prime sensitivity index of the confusion matrix.
-    This function is mostly for when there is no access to internal representation 
-    and/or decision making (like human data).
+def dprime_from_confusion(M, max_value=np.inf, min_value=-np.inf, **kwargs):
+    """Computes the d-prime sensitivity index of the given confusion matrix.
+    This function is designed mostly for when there is no access to internal 
+    representations and/or decision making mechanisms (like human data).  
+    If no ``collation`` is defined in ``kwargs`` this function computes 
+    one vs. rest d-prime for each class.
 
     Parameters
     ----------
@@ -125,33 +124,16 @@ def dprime_from_confusion(M, collation=None, fudge_mode=DEFAULT_FUDGE_MODE, \
         times when the classifier guesses that a test sample in the r-th class
         belongs to the c-th class.
 
-    collation: None or array-like with shape = [n_groupings, n_classes], optional
-        Defines how to group entries in `M` to compute TPR and FPR.  
-        Entries shoule be {+1, 0, -1}.  A row defines one instance of grouping,
-        where +1, -1, and 0 designate the corresponding class as a
-        positive, negative, and ignored class, respectively.  For example, 
-        the following `collation` defines a 3-way one vs. rest grouping 
-        (given that `M` is a 3x3 matrix):
-            [[+1, -1, -1],
-             [-1, +1, -1],
-             [-1, -1, +1]]
-        If `None` (default), one vs. rest grouping is assumed.
-
-    fudge_factor: float, optional
-        A small factor to avoid non-finite numbers when TPR or FPR becomes 0 or 1.
-        Default is 0.5.
-
-    fudge_mode: str, optional
-        Determins how to apply the fudge factor.  Can be one of:
-            'correction': apply only when needed (default)
-            'always': always apply the fudge factor
-            'none': no fudging --- equivalent to ``fudge_factor=0``
-
     max_value: float, optional
         Maximum possible d-prime value. Default is ``np.inf``.
 
     min_value: float, optional
         Minimum possible d-prime value. Default is ``-np.inf``.
+
+    kwargs: named arguments, optional
+        Passed to ``confusion_stats()``.  By passing ``collation``, ``fudge_mode``,
+        ``fudge_factor``, etc. one can change the behavior of d-prime computation 
+        (see ``confusion_stats()`` for details). 
 
 
     Returns
@@ -167,51 +149,8 @@ def dprime_from_confusion(M, collation=None, fudge_mode=DEFAULT_FUDGE_MODE, \
     """
 
     # M: confusion matrix, row means true classes, col means predicted classes
-    M = np.array(M)
-    assert M.ndim == 2
-    assert M.shape[0] == M.shape[1]
-    n_classes = M.shape[0]
+    P, N, TP, _, FP, _ = confusion_stats(M, **kwargs)
 
-    if collation is None:    
-        # make it one vs. rest
-        collation = -np.ones((n_classes, n_classes), dtype='int8')
-        collation += 2 * np.eye(n_classes, dtype='int8')
-    else:
-        collation = np.array(collation, dtype='int8')
-        assert collation.ndim == 2
-        assert collation.shape[1] == n_classes
-    
-    # P0: number of positives, for each class
-    # P: number of positives, for each grouping
-    # N: number of negatives, for each grouping
-    # TP: number of true positives, for each grouping
-    # FP: number of false positives, for each grouping
-    P0 = np.sum(M, axis=1)   
-    P = np.array([np.sum(P0[coll == +1]) for coll in collation], dtype='float64')
-    N = np.array([np.sum(P0[coll == -1]) for coll in collation], dtype='float64')
-    TP = np.array([np.sum(M[coll == +1][:, coll == +1]) for coll in collation], dtype='float64')
-    FP = np.array([np.sum(M[coll == -1][:, coll == +1]) for coll in collation], dtype='float64')
-
-    # -- application of fudge factor
-    if fudge_mode == 'none':           # no fudging
-        pass
-
-    elif fudge_mode == 'always':       # always apply fudge factor
-        TP += fudge_factor
-        FP += fudge_factor
-        P += 2.*fudge_factor
-        N += 2.*fudge_factor
-
-    elif fudge_mode == 'correction':   # apply fudge factor only when needed
-        TP[TP == P] = P[TP == P] - fudge_factor    # 100% correct
-        TP[TP == 0] = fudge_factor                 # 0% correct
-        FP[FP == N] = N[FP == N] - fudge_factor    # always FAR
-        FP[FP == 0] = fudge_factor                 # no false alarm
-
-    else:
-        raise ValueError('Invalid fudge_mode')
-
-    # -- done. compute the d'
     TPR = TP / P
     FPR = FP / N
     dp = np.clip(norm.ppf(TPR) - norm.ppf(FPR), min_value, max_value)
