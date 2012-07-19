@@ -6,7 +6,7 @@
 #
 # License: BSD
 
-__all__ = ['dprime', 'dprime_from_confusion_ova']
+__all__ = ['dprime', 'dprime_from_samp', 'dprime_from_confusion_ova']
 
 import numpy as np
 from scipy.stats import norm
@@ -33,9 +33,8 @@ def dprime(y_pred, y_true, **kwargs):
 
     Returns
     -------
-    dp: float or None
-        d-prime, None if d-prime is undefined and raw d-prime value (``safedp=False``)
-        is not requested (default).
+    dp: float
+        d-prime
 
     References
     ----------
@@ -60,11 +59,11 @@ def dprime(y_pred, y_true, **kwargs):
     pos = y_pred[i_pos]
     neg = y_pred[i_neg]
 
-    dp = dprime_from_samp(pos, neg, bypass_nchk=True, **kwargs)
+    dp = dprime_from_samp(pos, neg, **kwargs)
     return dp
 
 
-def dprime_from_samp(pos, neg, maxv=None, minv=None, safedp=True, bypass_nchk=False):
+def dprime_from_samp(pos, neg, max_value=np.inf, min_value=-np.inf):
     """Computes the d-prime sensitivity index from positive and negative samples.
 
     Parameters
@@ -75,26 +74,16 @@ def dprime_from_samp(pos, neg, maxv=None, minv=None, safedp=True, bypass_nchk=Fa
     neg: array-like
         Negative sample values.
 
-    maxv: float, optional
-        Maximum possible d-prime value. If None (default), there's no limit on
-        the maximum value.
+    max_value: float, optional
+        Maximum possible d-prime value. Default is ``np.inf``.
 
-    minv: float, optional
-        Minimum possible d-prime value. If None (default), there's no limit.
-
-    safedp: bool, optional
-        If True (default), this function will return None if the resulting d-prime 
-        value becomes non-finite.
-
-    bypass_nchk: bool, optional
-        If False (default), do not bypass the test to ensure that enough positive 
-        and negatives samples are there for the variance estimation.
+    min_value: float, optional
+        Minimum possible d-prime value. Default is ``-np.inf``.
 
     Returns
     -------
-    dp: float or None
-        d-prime, None if d-prime is undefined and raw d-prime value (``safedp=False``)
-        is not requested (default).
+    dp: float
+        d-prime
 
     References
     ----------
@@ -104,9 +93,10 @@ def dprime_from_samp(pos, neg, maxv=None, minv=None, safedp=True, bypass_nchk=Fa
     pos = np.array(pos)
     neg = np.array(neg)
 
-    if not bypass_nchk:
-        assert pos.size > 1, 'Not enough positive samples to estimate the variance'
-        assert neg.size > 1, 'Not enough negative samples to estimate the variance'
+    if pos.size <= 1:
+        raise ValueError('Not enough positive samples to estimate the variance')
+    if neg.size <= 1:
+        raise ValueError('Not enough negative samples to estimate the variance')
 
     pos_mean = pos.mean()
     neg_mean = neg.mean()
@@ -117,22 +107,16 @@ def dprime_from_samp(pos, neg, maxv=None, minv=None, safedp=True, bypass_nchk=Fa
     div = np.sqrt((pos_var + neg_var) / 2.)
 
     # from Dan's suggestion about clipping d' values...
-    if maxv is None:
-        maxv = np.inf
-    if minv is None:
-        minv = -np.inf
-
-    dp = np.clip(num / div, minv, maxv)
-
-    if safedp and not np.isfinite(dp):
-        dp = None
+    dp = np.clip(num / div, min_value, max_value)
 
     return dp
 
 
 def dprime_from_confusion_ova(M, fudge_mode=DEFAULT_FUDGE_MODE, \
-        fudge_fac=DEFAULT_FUDGE_FACTOR):
+        fudge_factor=DEFAULT_FUDGE_FACTOR, max_value=np.inf, min_value=-np.inf):
     """Computes the one-vs-all d-prime sensitivity index of the confusion matrix.
+    This function is mostly for when there is no access to internal representation 
+    and/or decision making (like human data).
 
     Parameters
     ----------
@@ -141,13 +125,21 @@ def dprime_from_confusion_ova(M, fudge_mode=DEFAULT_FUDGE_MODE, \
         times when the classifier guesses that a test sample in the r-th class
         belongs to the c-th class.
 
-    fudge_fac: float, optional
+    fudge_factor: float, optional
         A small factor to avoid non-finite numbers when TPR or FPR becomes 0 or 1.
 
     fudge_mode: str, optional
-        Determins how to apply the fudge factor
+        Determins how to apply the fudge factor.  Can be one of:
             'always': always apply the fudge factor 
             'correction': apply only when needed
+            'none': no fudging --- equivalent to ``fudge_factor=0``
+
+    max_value: float, optional
+        Maximum possible d-prime value. Default is ``np.inf``.
+
+    min_value: float, optional
+        Minimum possible d-prime value. Default is ``-np.inf``.
+
 
     Returns
     -------
@@ -170,26 +162,36 @@ def dprime_from_confusion_ova(M, fudge_mode=DEFAULT_FUDGE_MODE, \
     TP = np.diag(M)
     FP = np.sum(M, axis=0) - TP
 
-    if fudge_mode == 'always':    # always apply fudge factor
-        TPR = (TP.astype('float') + fudge_fac) / (P + 2.*fudge_fac)
-        FPR = (FP.astype('float') + fudge_fac) / (N + 2.*fudge_fac)
+
+    # -- application of fudge factor
+
+    if fudge_mode == 'none':           # no fudging
+        fudge_mode = 'always'
+        fudge_factor = 0
+
+    if fudge_mode == 'always':         # always apply fudge factor
+        TPR = (TP.astype('float64') + fudge_factor) / (P + 2.*fudge_factor)
+        FPR = (FP.astype('float64') + fudge_factor) / (N + 2.*fudge_factor)
 
     elif fudge_mode == 'correction':   # apply fudge factor only when needed
-        TP = TP.astype('float')
-        FP = FP.astype('float')
+        TP = TP.astype('float64')
+        FP = FP.astype('float64')
 
-        TP[TP == P] = P[TP == P] - fudge_fac    # 100% correct
-        TP[TP == 0] = fudge_fac                 # 0% correct
-        FP[FP == N] = N[FP == N] - fudge_fac    # always FAR
-        FP[FP == 0] = fudge_fac                 # no false alarm
+        TP[TP == P] = P[TP == P] - fudge_factor    # 100% correct
+        TP[TP == 0] = fudge_factor                 # 0% correct
+        FP[FP == N] = N[FP == N] - fudge_factor    # always FAR
+        FP[FP == 0] = fudge_factor                 # no false alarm
 
         TPR = TP / P
         FPR = FP / N
 
     else:
-        assert False, 'Not implemented'
+        raise ValueError('Invalid fudge_mode')
 
-    dp = norm.ppf(TPR) - norm.ppf(FPR)
+
+    # -- done. compute the d'
+
+    dp = np.clip(norm.ppf(TPR) - norm.ppf(FPR), min_value, max_value)
     # if there's only two dp's then, it's must be "A" vs. "~A" task.  If so, just give one value
     if len(dp) == 2:
         dp = np.array([dp[0]])
