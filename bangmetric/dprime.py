@@ -114,7 +114,7 @@ def dprime_from_samp(pos, neg, max_value=np.inf, min_value=-np.inf):
 
 def dprime_from_confusion(M, collation=None, fudge_mode=DEFAULT_FUDGE_MODE, \
         fudge_factor=DEFAULT_FUDGE_FACTOR, max_value=np.inf, min_value=-np.inf):
-    """Computes the one-vs-all d-prime sensitivity index of the confusion matrix.
+    """Computes the d-prime sensitivity index of the confusion matrix.
     This function is mostly for when there is no access to internal representation 
     and/or decision making (like human data).
 
@@ -125,7 +125,7 @@ def dprime_from_confusion(M, collation=None, fudge_mode=DEFAULT_FUDGE_MODE, \
         times when the classifier guesses that a test sample in the r-th class
         belongs to the c-th class.
 
-    collation: None (default) or array-like with shape = [n_grouping, n_classes]
+    collation: None or array-like with shape = [n_groupings, n_classes], optional
         Defines how to group entries in `M` to compute TPR and FPR.  
         Entries shoule be {+1, 0, -1}.  A row defines one instance of grouping,
         where +1, -1, and 0 designate the corresponding class as a
@@ -156,7 +156,7 @@ def dprime_from_confusion(M, collation=None, fudge_mode=DEFAULT_FUDGE_MODE, \
 
     Returns
     -------
-    dp: array, shape = [n_grouping]
+    dp: array, shape = [n_groupings]
         Array of d-primes, where each element corresponds to each grouping
         defined by `collation`.
 
