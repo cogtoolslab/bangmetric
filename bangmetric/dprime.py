@@ -162,37 +162,34 @@ def dprime_from_confusion_ova(M, fudge_mode=DEFAULT_FUDGE_MODE, \
 
     TP = np.diag(M)
     FP = np.sum(M, axis=0) - TP
-
+    TP = TP.astype('float64')
+    FP = FP.astype('float64')
 
     # -- application of fudge factor
-
     if fudge_mode == 'none':           # no fudging
         fudge_mode = 'always'
         fudge_factor = 0
 
     if fudge_mode == 'always':         # always apply fudge factor
-        TPR = (TP.astype('float64') + fudge_factor) / (P + 2.*fudge_factor)
-        FPR = (FP.astype('float64') + fudge_factor) / (N + 2.*fudge_factor)
+        TP += fudge_factor
+        FP += fudge_factor
+        P += 2.*fudge_factor
+        N += 2.*fudge_factor
 
     elif fudge_mode == 'correction':   # apply fudge factor only when needed
-        TP = TP.astype('float64')
-        FP = FP.astype('float64')
-
         TP[TP == P] = P[TP == P] - fudge_factor    # 100% correct
         TP[TP == 0] = fudge_factor                 # 0% correct
         FP[FP == N] = N[FP == N] - fudge_factor    # always FAR
         FP[FP == 0] = fudge_factor                 # no false alarm
 
-        TPR = TP / P
-        FPR = FP / N
-
     else:
         raise ValueError('Invalid fudge_mode')
 
-
     # -- done. compute the d'
-
+    TPR = TP / P
+    FPR = FP / N
     dp = np.clip(norm.ppf(TPR) - norm.ppf(FPR), min_value, max_value)
+
     # if there's only two dp's then, it's must be "A" vs. "~A" task.  If so, just give one value
     if len(dp) == 2:
         dp = np.array([dp[0]])
