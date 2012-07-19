@@ -52,7 +52,7 @@ def confusion_stats(M, collation=None, \
     -------
     P: array, shape = [n_groupings]
         Array of the number of positives, where each element corresponds to each 
-        grouping defined by `collation`.
+        grouping (row) defined by `collation`.
     N: array, shape = [n_groupings]
         Same as P, except that this is an array of the number of negatives.
     TP: array, shape = [n_groupings]
