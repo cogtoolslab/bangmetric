@@ -26,7 +26,7 @@ def confusion_stats(M, collation=None, \
         belongs to the c-th class.
 
     collation: None or array-like with shape = [n_groupings, n_classes], optional
-        Defines how to group entries in `M` to compute TPR and FPR.  
+        Defines how to group entries in `M` to make sub-confusion matrices.  
         Entries shoule be {+1, 0, -1}.  A row defines one instance of grouping,
         where +1, -1, and 0 designate the corresponding class as a
         positive, negative, and ignored class, respectively.  For example, 
@@ -38,8 +38,8 @@ def confusion_stats(M, collation=None, \
         If `None` (default), one vs. rest grouping is assumed.
 
     fudge_factor: float, optional
-        A small factor to avoid non-finite numbers when TPR or FPR becomes 0 or 1.
-        Default is 0.5.
+        A small factor to avoid TPR, FPR, TNR, or FNR becoming 0 or 1.
+        Mostly intended for d-prime calculation. Default is 0.5.
 
     fudge_mode: str, optional
         Determins how to apply the fudge factor.  Can be one of:
@@ -52,7 +52,7 @@ def confusion_stats(M, collation=None, \
     -------
     P: array, shape = [n_groupings]
         Array of the number of positives, where each element corresponds to each 
-        grouping defined by `collation`.
+        grouping (row) defined by `collation`.
     N: array, shape = [n_groupings]
         Same as P, except that this is an array of the number of negatives.
     TP: array, shape = [n_groupings]
@@ -78,7 +78,10 @@ def confusion_stats(M, collation=None, \
     n_classes = M.shape[0]
 
     if collation is None:    
-        # make it one vs. rest
+        # make it one vs. rest.  E.g., for a 3-classes case:
+        #  [[+1, -1, -1],
+        #   [-1, +1, -1],
+        #   [-1, -1, +1]]
         collation = -np.ones((n_classes, n_classes), dtype='int8')
         collation += 2 * np.eye(n_classes, dtype='int8')
     else:
