@@ -38,8 +38,8 @@ def confusion_stats(M, collation=None, \
         If `None` (default), one vs. rest grouping is assumed.
 
     fudge_factor: float, optional
-        A small factor to avoid non-finite numbers when TPR or FPR becomes 0 or 1.
-        Default is 0.5.
+        A small factor to avoid TPR, FPR, TNR, or FNR becoming 0 or 1.
+        Mostly intended for d-prime calculation. Default is 0.5.
 
     fudge_mode: str, optional
         Determins how to apply the fudge factor.  Can be one of:
