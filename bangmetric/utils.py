@@ -4,7 +4,7 @@
 #
 # License: BSD
 
-__all__ = ['confusion_stats']
+__all__ = ['confusion_matrix_stats']
 
 import numpy as np
 
@@ -12,7 +12,7 @@ DEFAULT_FUDGE_FACTOR = 0.5
 DEFAULT_FUDGE_MODE = 'correction'
 
 
-def confusion_stats(M, collation=None, \
+def confusion_matrix_stats(M, collation=None, \
         fudge_mode=DEFAULT_FUDGE_MODE, fudge_factor=DEFAULT_FUDGE_FACTOR):
     """Computes classification statistics of sub-confusion matrices inside 
     the given original confusion matrix M.  If no ``collation`` is given,
