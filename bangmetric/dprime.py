@@ -17,8 +17,8 @@ def dprime(y_pred=None, y_true=None, pos=None, neg=None, max_value=np.inf, min_v
     """Computes the d-prime sensitivity index.
     One must provide either y_pred and y_true or pos and neg.
     This function computes the d-prime of predictions given by 
-    y_pred and y_true by default.  If pos and neg are provided 
-    both y_pred and y_true are ignored and this function 
+    y_pred and y_true by default. If pos and neg are provided,
+    both y_pred and y_true are ignored, and this function 
     computes the d-prime from positive and negative samples
     given by pos and neg.
 
@@ -37,7 +37,8 @@ def dprime(y_pred=None, y_true=None, pos=None, neg=None, max_value=np.inf, min_v
         the positive classifier).
 
     neg: array-like, optional
-        Negative sample values.
+        Negative sample values. If both pos and neg are
+        provided, y_true and y_pred are ignored.
 
     max_value: float, optional
         Maximum possible d-prime value. Default is ``np.inf``.
@@ -138,7 +139,7 @@ def dprime_from_confusion_matrix(M, max_value=np.inf, min_value=-np.inf, **kwarg
     """
 
     # M: confusion matrix, row means true classes, col means predicted classes
-    P, N, TP, _, FP, _ = confusion_stats(M, **kwargs)
+    P, N, TP, _, FP, _ = confusion_matrix_stats(M, **kwargs)
 
     TPR = TP / P
     FPR = FP / N
@@ -146,29 +147,3 @@ def dprime_from_confusion_matrix(M, max_value=np.inf, min_value=-np.inf, **kwarg
 
     return dp
 
-
-    """Computes the population d-primes from the given set of confusion matrices.
-    Note: it is advised to read the documentation of  ``dprime_from_confusion()`` 
-    for understanding of ``kwargs``.
-
-    Parameters
-    ----------
-    M: array-like, shape = [n_individuals, n_classes (true), n_classes (pred)] 
-        Set of confusion matrices, where the element M_{irc} means the number of 
-        times when the i-th individual guesses that a test sample in the r-th class
-        belongs to the c-th class.
-
-    kwargs: named arguments, optional
-        Passed to ``dprime_from_confusion()``. 
-
-    Returns
-    -------
-    dp: array, shape = [n_groupings]
-        Array of population d-primes, where each element corresponds to each 
-        grouping defined by `collation` (see ``confusion_stats()`` for details).
-
-    References
-    ----------
-    http://en.wikipedia.org/wiki/D'
-    http://en.wikipedia.org/wiki/Confusion_matrix
-    """
