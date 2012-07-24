@@ -10,6 +10,7 @@ import numpy as np
 
 DEFAULT_FUDGE_FACTOR = 0.5
 DEFAULT_FUDGE_MODE = 'correction'
+DTYPE = np.float64
 
 
 def confusion_matrix_stats(M, collation=None, \
@@ -25,7 +26,8 @@ def confusion_matrix_stats(M, collation=None, \
         times when the classifier guesses that a test sample in the r-th class
         belongs to the c-th class.
 
-    collation: None or array-like of shape = [n_groupings, n_classes], optional
+    collation: None or array-like of shape = [n_groupings,
+        n_classes], optional (default=None)
         Defines how to group entries in `M` to make sub-confusion matrices.
         Entries shoule be {+1, 0, -1}.  A row defines one instance of grouping,
         where +1, -1, and 0 designate the corresponding class as a
@@ -37,13 +39,13 @@ def confusion_matrix_stats(M, collation=None, \
              [-1, -1, +1]]
         If `None` (default), one vs. rest grouping is assumed.
 
-    fudge_factor: float, optional
+    fudge_factor: float, optional (default=0.5)
         A small factor to avoid TPR, FPR, TNR, or FNR becoming 0 or 1.
-        Mostly intended for d-prime calculation. Default is 0.5.
+        Mostly intended for d-prime calculation.
 
-    fudge_mode: str, optional
+    fudge_mode: str, optional (default='correction')
         Determins how to apply the fudge factor.  Can be one of:
-            'correction': apply only when needed (default)
+            'correction': apply only when needed
             'always': always apply the fudge factor
             'none': no fudging --- equivalent to ``fudge_factor=0``
 
@@ -94,17 +96,17 @@ def confusion_matrix_stats(M, collation=None, \
     # FP: number of false positives, for each grouping
     P0 = np.sum(M, axis=1)
     P = np.array([np.sum(P0[coll == +1]) \
-            for coll in collation], dtype='float64')
+            for coll in collation], dtype=DTYPE)
     N = np.array([np.sum(P0[coll == -1]) \
-            for coll in collation], dtype='float64')
+            for coll in collation], dtype=DTYPE)
     TP = np.array([np.sum(M[coll == +1][:, coll == +1]) \
-            for coll in collation], dtype='float64')
+            for coll in collation], dtype=DTYPE)
     TN = np.array([np.sum(M[coll == -1][:, coll == -1]) \
-            for coll in collation], dtype='float64')
+            for coll in collation], dtype=DTYPE)
     FP = np.array([np.sum(M[coll == -1][:, coll == +1]) \
-            for coll in collation], dtype='float64')
+            for coll in collation], dtype=DTYPE)
     FN = np.array([np.sum(M[coll == +1][:, coll == -1]) \
-            for coll in collation], dtype='float64')
+            for coll in collation], dtype=DTYPE)
 
     # -- application of fudge factor
     if fudge_mode == 'none':           # no fudging
