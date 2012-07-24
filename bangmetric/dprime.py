@@ -10,35 +10,53 @@ __all__ = ['dprime', 'dprime_from_confusion_matrix']
 
 import numpy as np
 from scipy.stats import norm
-from .utils import confusion_stats
+from .utils import confusion_matrix_stats
+
+DEFAULT_DPRIME_MODE = 'binary'
 
 
-def dprime(y_pred=None, y_true=None, pos=None, neg=None, max_value=np.inf, min_value=-np.inf):
-    """Computes the d-prime sensitivity index.
-    One must provide either y_pred and y_true or pos and neg.
-    This function computes the d-prime of predictions given by 
-    y_pred and y_true by default. If pos and neg are provided,
-    both y_pred and y_true are ignored, and this function 
-    computes the d-prime from positive and negative samples
-    given by pos and neg.
+def dprime(A, B=None, mode=DEFAULT_DPRIME_MODE, max_value=np.inf,\
+        min_value=-np.inf):
+    """Computes the d-prime sensitivity index of predictions
+    from various data formats.  Depending on the choice of
+    `mode`, this function can take one of the following format:
+
+    * Binary classification outputs (`mode='binary'`; default)
+    * Positive and negative samples (`mode='sample'`)
+    * True positive and false positive rate (`mode='rate'`)
 
     Parameters
     ----------
-    y_true: array, shape = [n_samples], optional
-        True values, interpreted as strictly positive or not
-        (i.e. converted to binary).
-        Could be in {-1, +1} or {0, 1} or {False, True}.
+    A, B:
+        If `mode` is 'binary':
 
-    y_pred: array, shape = [n_samples], optional
-        Predicted values (real).
+            A: array, shape = [n_samples],
+                True values, interpreted as strictly positive or not
+                (i.e. converted to binary).
+                Could be in {-1, +1} or {0, 1} or {False, True}.
 
-    pos: array-like, optional
-        Positive sample values (e.g., raw projection values of 
-        the positive classifier).
+            B: array, shape = [n_samples],
+                Predicted values (real).
 
-    neg: array-like, optional
-        Negative sample values. If both pos and neg are
-        provided, y_true and y_pred are ignored.
+        If `mode` is 'sample':
+
+            A: array-like,
+                Positive sample values (e.g., raw projection values
+                of the positive classifier).
+
+            B: array-like,
+                Negative sample values.
+
+        If `mode` is 'rate':
+
+            A: array-like, shape = [n_groupings]
+                True positive rates
+
+            B: array-like, shape = [n_groupings]
+                False positive rates
+
+    mode: {'binary', 'sample', 'rate'}, optional
+        Directs the interpretation of A and B
 
     max_value: float, optional
         Maximum possible d-prime value. Default is ``np.inf``.
@@ -57,11 +75,12 @@ def dprime(y_pred=None, y_true=None, pos=None, neg=None, max_value=np.inf, min_v
     """
 
     # -- basic checks and conversion
-    if pos is not None and neg is not None:
-        pos = np.array(pos)
-        neg = np.array(neg)
+    if mode == 'sample':
+        pos, neg = np.array(A), np.array(B)
 
-    else:
+    elif mode == 'binary':
+        y_true, y_pred = A, B
+
         assert len(y_true) == len(y_pred)
         assert np.isfinite(y_true).all()
 
@@ -71,48 +90,64 @@ def dprime(y_pred=None, y_true=None, pos=None, neg=None, max_value=np.inf, min_v
         y_pred = np.array(y_pred)
         assert y_pred.ndim == 1
 
-        # -- actual computation
         i_pos = y_true > 0
         i_neg = ~i_pos
 
         pos = y_pred[i_pos]
         neg = y_pred[i_neg]
 
-    assert np.isfinite(pos).all()
-    assert np.isfinite(neg).all()
+    elif mode == 'rate':
+        TPR, FPR = np.array(A), np.array(B)
+        assert TPR.shape == FPR.shape
 
-    if pos.size <= 1:
-        raise ValueError('Not enough positive samples to estimate the variance')
-    if neg.size <= 1:
-        raise ValueError('Not enough negative samples to estimate the variance')
+    else:
+        raise ValueError('Invalid mode')
 
     # -- compute d'
-    pos_mean = pos.mean()
-    neg_mean = neg.mean()
-    pos_var = pos.var(ddof=1)
-    neg_var = neg.var(ddof=1)
+    if mode == 'sample' or mode == 'binary':
+        assert np.isfinite(pos).all()
+        assert np.isfinite(neg).all()
 
-    num = pos_mean - neg_mean
-    div = np.sqrt((pos_var + neg_var) / 2.)
+        if pos.size <= 1:
+            raise ValueError('Not enough positive samples'\
+                    'to estimate the variance')
+        if neg.size <= 1:
+            raise ValueError('Not enough negative samples'\
+                    'to estimate the variance')
+
+        pos_mean = pos.mean()
+        neg_mean = neg.mean()
+        pos_var = pos.var(ddof=1)
+        neg_var = neg.var(ddof=1)
+
+        num = pos_mean - neg_mean
+        div = np.sqrt((pos_var + neg_var) / 2.)
+
+        dp = num / div
+
+    else:   # mode == 'rate'
+        dp = norm.ppf(TPR) - norm.ppf(FPR)
 
     # from Dan's suggestion about clipping d' values...
-    dp = np.clip(num / div, min_value, max_value)
+    dp = np.clip(dp, min_value, max_value)
 
     return dp
 
 
-def dprime_from_confusion_matrix(M, max_value=np.inf, min_value=-np.inf, **kwargs):
-    """Computes the d-prime sensitivity indices of the given confusion matrix.
-    This function is designed mostly for when there is no access to internal 
-    representations and/or decision making mechanisms (like human data).  
-    If no ``collation`` is defined in ``kwargs`` this function computes 
+def dprime_from_confusion_matrix(M, max_value=np.inf, \
+        min_value=-np.inf, **kwargs):
+    """Computes the d-prime sensitivity indices of predictions from
+    the given confusion matrix. This function is designed mostly for
+    when there is no access to internal representations and/or
+    decision making mechanisms (like human data).  If no ``collation``
+    is defined in ``kwargs`` this function computes
     one vs. rest d-prime for each class.
 
     Parameters
     ----------
-    M: array-like, shape = [n_classes (true), n_classes (pred)] 
+    M: array-like, shape = [n_classes (true), n_classes (pred)]
         Confusion matrix, where the element M_{rc} means the number of
-        times when the classifier/subject guesses that a test sample in 
+        times when the classifier/subject guesses that a test sample in
         the r-th class belongs to the c-th class.
 
     max_value: float, optional
@@ -122,9 +157,10 @@ def dprime_from_confusion_matrix(M, max_value=np.inf, min_value=-np.inf, **kwarg
         Minimum possible d-prime value. Default is ``-np.inf``.
 
     kwargs: named arguments, optional
-        Passed to ``confusion_stats()``.  By passing ``collation``, ``fudge_mode``,
-        ``fudge_factor``, etc. one can change the behavior of d-prime computation 
-        (see ``confusion_stats()`` for details). 
+        Passed to ``confusion_stats()``.  By assigning ``collation``,
+        ``fudge_mode``, ``fudge_factor``, etc. one can change the
+        behavior of d-prime computation
+        (see ``confusion_stats()`` for details).
 
     Returns
     -------
@@ -143,7 +179,6 @@ def dprime_from_confusion_matrix(M, max_value=np.inf, min_value=-np.inf, **kwarg
 
     TPR = TP / P
     FPR = FP / N
-    dp = np.clip(norm.ppf(TPR) - norm.ppf(FPR), min_value, max_value)
 
-    return dp
-
+    return dprime(TPR, FPR, mode='rate', \
+            max_value=max_value, min_value=min_value)
