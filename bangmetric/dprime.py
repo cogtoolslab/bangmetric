@@ -76,11 +76,11 @@ def dprime(A, B=None, mode=DEFAULT_DPRIME_MODE, max_value=np.inf,\
         Minimum possible d-prime value. Default is ``-np.inf``.
 
     kwargs: named arguments, optional
-        Passed to ``confusion_stats()`` and used only when `mode`
+        Passed to ``confusion_matrix_stats()`` and used only when `mode`
         is 'confusionmat'.  By assigning ``collation``,
         ``fudge_mode``, ``fudge_factor``, etc. one can
         change the behavior of d-prime computation
-        (see ``confusion_stats()`` for details).
+        (see ``confusion_matrix_stats()`` for details).
 
     Returns
     -------
