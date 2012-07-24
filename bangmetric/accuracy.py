@@ -11,7 +11,7 @@ import numpy as np
 
 
 def accuracy(y_true, y_pred, balanced=False):
-    """Computes the Accuracy of the predictions (also known as the
+    """Computes the accuracy of the predictions (also known as the
     zero-one score).
 
     Parameters
