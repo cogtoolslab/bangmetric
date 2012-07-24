@@ -12,7 +12,7 @@ from .correlation import spearman
 DTYPE = np.float64
 
 
-def central_ratio(num, dnm, center=np.median, finite=True):
+def central_ratio(num, dnm, centerfn=np.median, finite=True):
     """Computes the central tendency (median, by default) of the ratios
     between `num` and `dnm`.  By default, this function gives the
     "Turing ratio" used in the paper by Majaj, Hong, Solomon, and DiCarlo.
@@ -25,7 +25,7 @@ def central_ratio(num, dnm, center=np.median, finite=True):
     dnm: array-lie, shape = `num.shape()`
         Denominators of ratios.  `num` and `dnm` must have the same shape.
 
-    center: function, optional (default=np.median)
+    centerfn: function, optional (default=np.median)
         Function to compute the central tendency.
 
     finite: boolean, optional (default=True)
@@ -45,10 +45,10 @@ def central_ratio(num, dnm, center=np.median, finite=True):
         num = num[fi]
         dnm = dnm[fi]
 
-    return center(num / dnm)
+    return centerfn(num / dnm)
 
 
-def consistency(A, B, corrcoef=spearman, finite=True):
+def consistency(A, B, consistencyfn=spearman, finite=True):
     """Computes the consistency (Spearman rank correlation coefficient,
     by default) between two sets of data points (e.g., d' scores) `A`
     and `B`.  By default, this function gives the "consistency"
@@ -63,7 +63,7 @@ def consistency(A, B, corrcoef=spearman, finite=True):
         Another set of data points to compare with `A`.
         `A` and `B` must have the same shape.
 
-    corrcoef: function, optional (default=bangmetric.spearman)
+    consistencyfn: function, optional (default=bangmetric.spearman)
         Function to compute the "consistency."
 
     finite: boolean, optional (default=True)
@@ -83,4 +83,4 @@ def consistency(A, B, corrcoef=spearman, finite=True):
         A = A[fi]
         B = B[fi]
 
-    return corrcoef(A, B)
+    return consistencyfn(A, B)
