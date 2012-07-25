@@ -15,8 +15,10 @@ from .utils import confusion_matrix_stats
 DEFAULT_DPRIME_MODE = 'binary'
 
 
-def dprime(A, B=None, mode=DEFAULT_DPRIME_MODE, max_value=np.inf,\
-        min_value=-np.inf, **kwargs):
+def dprime(A, B=None, mode=DEFAULT_DPRIME_MODE,\
+        max_value=np.inf, min_value=-np.inf,\
+        max_ppf_value=np.inf, min_ppf_value=-np.inf,\
+        **kwargs):
     """Computes the d-prime sensitivity index of predictions
     from various data formats.  Depending on the choice of
     `mode`, this function can take one of the following format:
@@ -66,14 +68,22 @@ def dprime(A, B=None, mode=DEFAULT_DPRIME_MODE, max_value=np.inf,\
 
             B: ignored
 
-    mode: {'binary', 'sample', 'rate'}, optional
-        Directs the interpretation of A and B. Default is 'binary'.
+    mode: {'binary', 'sample', 'rate'}, optional, (default='binary')
+        Directs the interpretation of A and B.
 
-    max_value: float, optional
-        Maximum possible d-prime value. Default is ``np.inf``.
+    max_value: float, optional (default=np.inf)
+        Maximum possible d-prime value.
 
-    min_value: float, optional
-        Minimum possible d-prime value. Default is ``-np.inf``.
+    min_value: float, optional (default=-np.inf)
+        Minimum possible d-prime value.
+
+    max_ppf_value: float, optional (default=np.inf)
+        Maximum possible ppf value.
+        Used only when mode is 'rate' or 'confusionmat'.
+
+    min_ppf_value: float, optional (default=-np.inf).
+        Minimum possible ppf value.
+        Used only when mode is 'rate' or 'confusionmat'.
 
     kwargs: named arguments, optional
         Passed to ``confusion_matrix_stats()`` and used only when `mode`
@@ -155,7 +165,11 @@ def dprime(A, B=None, mode=DEFAULT_DPRIME_MODE, max_value=np.inf,\
         dp = num / div
 
     else:   # mode is rate or confusionmat
-        dp = norm.ppf(TPR) - norm.ppf(FPR)
+        ppfTPR = norm.ppf(TPR)
+        ppfFPR = norm.ppf(FPR)
+        ppfTPR = np.clip(ppfTPR, min_ppf_value, max_ppf_value)
+        ppfFPR = np.clip(ppfFPR, min_ppf_value, max_ppf_value)
+        dp = ppfTPR - ppfFPR
 
     # from Dan's suggestion about clipping d' values...
     dp = np.clip(dp, min_value, max_value)
