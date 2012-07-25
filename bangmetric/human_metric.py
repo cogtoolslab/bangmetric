@@ -22,7 +22,7 @@ def central_ratio(num, dnm, centerfn=np.median, finite=True):
     num: array-like
         Numerators of ratios
 
-    dnm: array-lie, shape = `num.shape()`
+    dnm: array-like, shape = `num.shape()`
         Denominators of ratios.  `num` and `dnm` must have the same shape.
 
     centerfn: function, optional (default=np.median)
@@ -59,7 +59,7 @@ def consistency(A, B, consistencyfn=spearman, finite=True):
     A: array-like
         A set of data points
 
-    B: array-lie, shape = `A.shape()`
+    B: array-like, shape = `A.shape()`
         Another set of data points to compare with `A`.
         `A` and `B` must have the same shape.
 
