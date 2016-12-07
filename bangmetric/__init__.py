@@ -7,3 +7,5 @@ from kernel_analysis import *  # pyflakes.ignore
 from nk import *  # pyflakes.ignore
 from utils import *  # pyflakes.ignore
 from human_metric import *  # pyflakes.ignore
+
+__version__ = '0.0.1'

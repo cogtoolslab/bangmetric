@@ -1,252 +1,106 @@
-#!/usr/bin/env python
-# -*- coding: utf-8 -*-
+"""A setuptools based setup module.
 
-""" distribute- and pip-enabled setup.py """
+See:
+https://packaging.python.org/en/latest/distributing.html
+https://github.com/pypa/sampleproject
+"""
 
-import logging
-import os
-import re
+# Always prefer setuptools over distutils
+from setuptools import setup, find_packages
+# To use a consistent encoding
+from codecs import open
+from os import path
 
-# ----- overrides -----
-
-# set these to anything but None to override the automatic defaults
-packages = None
-package_name = None
-package_data = None
-scripts = None
-requirements_file = None
-requirements = None
-dependency_links = None
-use_numpy = True
-
-# ---------------------
+import bangmetric
 
 
-# ----- control flags -----
+here = path.abspath(path.dirname(__file__))
 
-# fallback to setuptools if distribute isn't found
-setup_tools_fallback = False
+# Get the long description from the README file
+with open(path.join(here, 'README.md'), encoding='utf-8') as f:
+    long_description = f.read()
 
-# don't include subdir named 'tests' in package_data
-skip_tests = True
+setup(
+    name='bangmetric',
 
-# print some extra debugging info
-debug = True
+    # Versions should comply with PEP440.  For a discussion on single-sourcing
+    # the version across setup.py and the project code, see
+    # https://packaging.python.org/en/latest/single_source_version.html
+    version=bangmetric.__version__,
 
-# -------------------------
+    description='',
+    long_description=long_description,
 
-if debug:
-    logging.basicConfig(level=logging.DEBUG)
-# distribute import and testing
-try:
-    import distribute_setup
-    distribute_setup.use_setuptools()
-    logging.debug("distribute_setup.py imported and used")
-except ImportError:
-    # fallback to setuptools?
-    # distribute_setup.py was not in this directory
-    if not (setup_tools_fallback):
-        import setuptools
-        if not (hasattr(setuptools, '_distribute') and \
-                setuptools._distribute):
-            raise ImportError(\
-                    "distribute was not found and fallback " \
-                    "to setuptools was not allowed")
-        else:
-            logging.debug("distribute_setup.py not found, \
-                    defaulted to system distribute")
-    else:
-        logging.debug("distribute_setup.py not found, " \
-                "defaulting to system setuptools")
+    # The project's main homepage.
+    url='https://github.com/dicarlolab/bangmetric',
 
-import setuptools
+    # Author details
+    author='DiCarlo Lab',
 
+    # Choose your license
+    license='New BSD',
 
-def find_scripts():
-    return [s for s in setuptools.findall('scripts/') \
-            if os.path.splitext(s)[1] != '.pyc']
+    # See https://pypi.python.org/pypi?%3Aaction=list_classifiers
+    classifiers=[
+        # How mature is this project? Common values are
+        #   3 - Alpha
+        #   4 - Beta
+        #   5 - Production/Stable
 
+        # Pick your license as you wish (should match "license" above)
+        'License :: OSI Approved :: New BSD License',
 
-def package_to_path(package):
-    """
-    Convert a package (as found by setuptools.find_packages)
-    e.g. "foo.bar" to usable path
-    e.g. "foo/bar"
+        # Specify the Python versions you support here. In particular, ensure
+        # that you indicate whether you support Python 2, Python 3 or both.
+        'Programming Language :: Python :: 2',
+        'Programming Language :: Python :: 2.7',
+    ],
 
-    No idea if this works on windows
-    """
-    return package.replace('.', '/')
+    # What does your project relate to?
+    keywords='tensorflow deep learning',
 
+    # You can just specify the packages manually here if your project is
+    # simple. Or you can use find_packages().
+    packages=find_packages(exclude=['contrib', 'docs', 'tests']),
 
-def find_subdirectories(package):
-    """
-    Get the subdirectories within a package
-    This will include resources (non-submodules) and submodules
-    """
-    try:
-        subdirectories = os.walk(package_to_path(package)).next()[1]
-    except StopIteration:
-        subdirectories = []
-    return subdirectories
+    # Alternatively, if you want to distribute just a my_module.py, uncomment
+    # this:
+    #   py_modules=["my_module"],
 
+    # List run-time dependencies here.  These will be installed by pip when
+    # your project is installed. For an analysis of "install_requires" vs pip's
+    # requirements files see:
+    # https://packaging.python.org/en/latest/requirements.html
+    install_requires=['numpy', 'scipy', 'scikit-learn'],
 
-def subdir_findall(dir, subdir):
-    """
-    Find all files in a subdirectory and return paths relative to dir
+    # List additional groups of dependencies here (e.g. development
+    # dependencies). You can install these using the following syntax,
+    # for example:
+    # $ pip install -e .[dev,test]
+    # extras_require={
+    #     'dev': ['check-manifest'],
+    #     'test': ['coverage'],
+    # },
 
-    This is similar to (and uses) setuptools.findall
-    However, the paths returned are in the form needed for package_data
-    """
-    strip_n = len(dir.split('/'))
-    path = '/'.join((dir, subdir))
-    return ['/'.join(s.split('/')[strip_n:]) for s in setuptools.findall(path)]
+    # If there are data files included in your packages that need to be
+    # installed, specify them here.  If using Python 2.6 or less, then these
+    # have to be included in MANIFEST.in as well.
+    # package_data={
+    #     'sample': ['package_data.dat'],
+    # },
 
+    # Although 'package_data' is the preferred approach, in some case you may
+    # need to place data files outside of your packages. See:
+    # http://docs.python.org/3.4/distutils/setupscript.html#installing-additional-files # noqa
+    # In this case, 'data_file' will be installed into '<sys.prefix>/my_data'
+    # data_files=[('my_data', ['data/data_file'])],
 
-def find_package_data(packages):
-    """
-    For a list of packages, find the package_data
-
-    This function scans the subdirectories of a package and considers all
-    non-submodule subdirectories as resources, including them in
-    the package_data
-
-    Returns a dictionary suitable for setup(package_data=<result>)
-    """
-    package_data = {}
-    for package in packages:
-        package_data[package] = []
-        for subdir in find_subdirectories(package):
-            if '.'.join((package, subdir)) in packages:  # skip submodules
-                logging.debug("skipping submodule %s/%s" % (package, subdir))
-                continue
-            if skip_tests and (subdir == 'tests'):  # skip tests
-                logging.debug("skipping tests %s/%s" % (package, subdir))
-                continue
-            package_data[package] += \
-                    subdir_findall(package_to_path(package), subdir)
-    return package_data
-
-
-def parse_requirements(file_name):
-    """
-    from:
-        http://cburgmer.posterous.com/pip-requirementstxt-and-setuppy
-    """
-    requirements = []
-    with open(file_name, 'r') as f:
-        for line in f:
-            if re.match(r'(\s*#)|(\s*$)', line):
-                continue
-            if re.match(r'\s*-e\s+', line):
-                requirements.append(re.sub(r'\s*-e\s+.*#egg=(.*)$',\
-                        r'\1', line).strip())
-            elif re.match(r'\s*-f\s+', line):
-                pass
-            else:
-                requirements.append(line.strip())
-    return requirements
-
-
-def parse_dependency_links(file_name):
-    """
-    from:
-        http://cburgmer.posterous.com/pip-requirementstxt-and-setuppy
-    """
-    dependency_links = []
-    with open(file_name) as f:
-        for line in f:
-            if re.match(r'\s*-[ef]\s+', line):
-                dependency_links.append(re.sub(r'\s*-[ef]\s+',\
-                        '', line))
-    return dependency_links
-
-# ----------- Override defaults here ----------------
-if packages is None:
-    packages = setuptools.find_packages()
-
-if len(packages) == 0:
-    raise Exception("No valid packages found")
-
-if package_name is None:
-    package_name = packages[0]
-
-if package_data is None:
-    package_data = find_package_data(packages)
-
-if scripts is None:
-    scripts = find_scripts()
-
-if requirements_file is None:
-    requirements_file = 'requirements.txt'
-
-if os.path.exists(requirements_file):
-    if requirements is None:
-        requirements = parse_requirements(requirements_file)
-    if dependency_links is None:
-        dependency_links = parse_dependency_links(requirements_file)
-else:
-    if requirements is None:
-        requirements = []
-    if dependency_links is None:
-        dependency_links = []
-
-if debug:
-    logging.debug("Module name: %s" % package_name)
-    for package in packages:
-        logging.debug("Package: %s" % package)
-        logging.debug("\tData: %s" % str(package_data[package]))
-    logging.debug("Scripts:")
-    for script in scripts:
-        logging.debug("\tScript: %s" % script)
-    logging.debug("Requirements:")
-    for req in requirements:
-        logging.debug("\t%s" % req)
-    logging.debug("Dependency links:")
-    for dl in dependency_links:
-        logging.debug("\t%s" % dl)
-
-from distutils.core import Command
-class PyTest(Command):
-    user_options = []
-    def initialize_options(self):
-        pass
-    def finalize_options(self):
-        pass
-    def run(self):
-        import sys,subprocess
-        errno = subprocess.call([sys.executable, 'runtests.py'])
-        raise SystemExit(errno)
-
-
-if __name__ == '__main__':
-
-    sub_packages = packages
-
-    if use_numpy:
-        from numpy.distutils.misc_util import Configuration
-        config = Configuration(package_name, '', None)
-
-        for sub_package in sub_packages:
-            print 'adding', sub_package
-            config.add_subpackage(sub_package)
-
-        from numpy.distutils.core import setup
-        kwargs = config.todict()
-        kwargs['cmdclass'] = dict(test=PyTest)
-        setup(**kwargs)
-
-    else:
-        setuptools.setup(
-            name=package_name,
-            version='dev',
-            packages=packages,
-            scripts=scripts,
-
-            package_data=package_data,
-            include_package_data=True,
-
-            install_requires=requirements,
-            dependency_links=dependency_links,
-
-            cmdclass=dict(test=PyTest),
-        )
+    # To provide executable scripts, use entry points in preference to the
+    # "scripts" keyword. Entry points provide cross-platform support and allow
+    # pip to create the appropriate form of executable for the target platform.
+    # entry_points={
+    #     'console_scripts': [
+    #         'sample=sample:main',
+    #     ],
+    # },
+)
